@@ -1,0 +1,16 @@
+{
+    {
+       setTemplate("QTEM", "QStopBang(Q_START)", "SB")
+        import("rawscn/basecase.scn")
+        import("rawscn/qHardFilter.scn")
+        import("rawscn/qFastTwoLevel.scn")
+    }
+    {
+        setTemplate("QTEM", "QPhilHigh(Q_START)", "QPhil")
+        import("rawscn/qFastEitherOr.scn")
+    }
+    {
+       setTemplate("QTEM", "QStopBang(Q_START)", "SB")
+        import("rawscn/ultraInexpensive.scn")
+    }
+}

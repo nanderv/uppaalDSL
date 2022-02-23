@@ -1,0 +1,7 @@
+{
+   # First GP-model
+        setTemplate("GP", "GPbaseCase()", "Traditional")
+        setTemplate("SC", "SleepCentre(TREATMENT_START)", "SOMNO")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+}

@@ -1,0 +1,6 @@
+{
+    setLocalValue("Patient", "const int INCIDENCE", 570)
+   setLocalIntSweep("SleepCentre", "int PSGodds",0,1000,20)
+
+   merge("selectedScenarios.scn")
+}

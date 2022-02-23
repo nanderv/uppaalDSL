@@ -1,0 +1,9 @@
+{
+
+    # First GP-model
+    setTemplate("GP", "GP1()", "GP1")
+    setTemplate("TM", "Treatment2()", "Treatment2")
+    setTemplate("SC", "SOMNO_T()","SOMNO")
+    setTemplate("TESTTEM", "TestPGorPSG(TEST_START)","CX")
+    setLocalIntSweep("TestPGorPSG", "int PERCENTAGE", 0, 1000, 50)
+}

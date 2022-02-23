@@ -1,0 +1,16 @@
+{
+   # First GP-model
+        merge("imports/test.scn")
+         setTemplate("PROG", "", "SCN2")
+        setTemplate("GP", "GP1()", "GP1")
+        setTemplate("SC", "SleepCentre2(TREATMENT_START)", "SOMNO2")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestHSAT(TEST_START)", "HSAT")
+        {
+            addTemplateChoice("TESTTEM", "TestHSAT(TEST_START)", "PSG")
+            # merge("basic/2/profile.scn")
+        }
+        {
+
+        }
+}

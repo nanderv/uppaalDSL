@@ -1,0 +1,7 @@
+{
+ setLocalValue("SleepCentre", "int PSGodds",300)
+   setLocalIntSweep("Patient", "const int INCIDENCE",200,1000,20)
+   addTemplateChoices("QTEM")
+   addTemplateChoice("QTEM", "QStopBang(Q_START)", "SB")
+   merge("selectedScenarios.scn")
+}

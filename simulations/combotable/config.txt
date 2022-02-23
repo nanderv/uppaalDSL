@@ -1,0 +1,4 @@
+model:light_model.xml
+output:output-1.xml
+query:long.q
+processor:proc.py

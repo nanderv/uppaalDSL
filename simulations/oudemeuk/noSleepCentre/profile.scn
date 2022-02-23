@@ -1,0 +1,23 @@
+{
+   merge("incidences.scn")
+   {
+        setTemplate("PROG", "", "NOSC")
+        setTemplate("GP", "GP11()", "GP11")
+        setTemplate("SC", "SleepCentre1(TREATMENT_START)", "SOMNO")
+        setTemplate("TESTTEM", "TestPSG(TEST_START)", "PSG")
+        {
+             setTemplate("QTEM", "QPhilLow(Q_START)", "PHILL")
+        }
+        {
+            setTemplate("QTEM", "QStopBang(Q_START)", "SB")
+            setLocalValue("QStopBang", "const int sens", 880)
+            setLocalValue("QStopBang", "const int spec", 420)
+        }
+   }
+   {
+         setTemplate("PROG", "", "TRAD")
+         setTemplate("GP", "GP1()", "GP1")
+         setTemplate("SC", "SleepCentre1(TREATMENT_START)", "SOMNO")
+         setTemplate("TESTTEM", "TestPSG(TEST_START)", "PSG")
+   }
+}

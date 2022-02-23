@@ -1,0 +1,8 @@
+{
+   # First GP-model
+        setTemplate("GP", "GPfastTrackThreeLevel()", "ThreeLevelFastTrack")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestODI(TEST_START)", "ODI")
+        setTemplate("SC", "SleepCentre(TREATMENT_START)", "SOMNO2")
+
+}

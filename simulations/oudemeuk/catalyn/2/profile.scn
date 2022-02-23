@@ -1,0 +1,9 @@
+{
+   # First GP-model
+   setTemplate("PROG", "", "CAT2")
+        setTemplate("GP", "GP7()", "GP7")
+        setTemplate("SC", "SleepCentre1(NOP)", "SOMNO")
+        setTemplate("TM", "TreatmentCPAP()", "CPAP")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+}

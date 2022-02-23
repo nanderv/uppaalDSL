@@ -1,0 +1,24 @@
+{
+ setLocalValue("SleepCentre", "int PSGodds",300)
+    setLocalValue("Patient", "const int INCIDENCE", 570)
+
+    {
+        import("rawscn/basecase.scn")
+    }
+    {
+        addTemplateChoices("QTEM")
+        addTemplateChoice("QTEM", "QStopBang(Q_START)", "SB")
+        {
+            import("rawscn/qHardFilter.scn")
+        }
+        {
+            import("rawscn/qFastTwoLevel.scn")
+        }
+        {
+            import("rawscn/qFastEitherOr.scn")
+        }
+        {
+            import("rawscn/ultraInexpensive.scn")
+        }
+    }
+}

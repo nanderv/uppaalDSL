@@ -1,0 +1,8 @@
+{
+setLocalIntChoices("Patient", "const int INCIDENCE")
+setLocalIntChoice("Patient", "const int INCIDENCE", 500)
+setLocalIntChoice("Patient", "const int INCIDENCE", 600)
+setLocalIntChoice("Patient", "const int INCIDENCE", 700)
+
+
+}

@@ -1,0 +1,8 @@
+{
+   # First GP-model
+        setTemplate("GP", "GPhardFilter()", "HardFilter")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+        setTemplate("SC", "SleepCentre(TREATMENT_START)", "SOMNO2")
+
+}

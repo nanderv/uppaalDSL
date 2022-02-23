@@ -1,0 +1,1 @@
+VERIFYTA_PATH= "/opt/uppaal/uppaal64-4.1.24/bin-Linux/verifyta"

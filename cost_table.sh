@@ -1,0 +1,2 @@
+
+python3 graphs.py costper basic/1::ddt.txt basic/2::ddt.txt basic/3::ddt.txt basic/4::ddt.txt basic/5::ddt.txt basic/6::ddt.txt catalyn/1::ddt.txt catalyn/2::ddt.txt catalyn/3a::ddt.txt catalyn/3b::ddt.txt catalyn/4::ddt.txt

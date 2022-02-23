@@ -1,0 +1,7 @@
+model:light_model.xml
+output:output-1.xml
+query:main.q
+processor:proc.py
+groupResults: GP
+groupResults: adt
+groupResults: ddt

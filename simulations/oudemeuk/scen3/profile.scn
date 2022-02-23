@@ -1,0 +1,12 @@
+{
+   # First GP-model
+        setTemplate("GP", "GP3()", "GP3")
+        setTemplate("SC", "SOMNO_T()", "SOMNO")
+        addTemplateChoices("TESTTEM")
+#        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+        addTemplateChoice("TESTTEM", "TestHSAT(TEST_START)", "HSAT")
+        #{
+         setTemplate("TM", "Treatment2()", "Treatment2")
+ #       }
+
+}

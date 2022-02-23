@@ -1,0 +1,8 @@
+{
+        addTemplateChoices("QTEM")
+
+        addTemplateChoice("QTEM", "QBerlinQ(Q_START)", "BQ")
+        addTemplateChoice("QTEM", "QStopBang(Q_START)", "SB")
+        addTemplateChoice("QTEM", "QPhilLow(Q_START)", "Phillips Low")
+        addTemplateChoice("QTEM", "QPhilHigh(Q_START)", "Phillips High")
+}

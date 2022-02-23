@@ -1,0 +1,2096 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+bool is_diagnosed_has_osa = false;
+bool is_diagnosed_no_osa = false;
+
+const int PREV = 700; //injected
+const int PSG_ODDS = 200; //trans
+
+int diagnosed = 0;
+void diagnose(bool has_osa){
+    if (has_osa){
+        is_diagnosed_has_osa = true;
+    } else {
+        is_diagnosed_no_osa = true;
+    }
+    diagnosed = 1;   
+}
+const bool MALE = 0;
+const bool FEMALE = 1;
+bool gender = 0;
+const int mGroups[21] = {438, 455, 476, 517, 522, 546, 550, 522, 500, 555, 629, 635, 572, 496, 468, 320, 198, 105, 37, 7, 0};
+const int fGroups[21] = {416, 432, 450, 490, 498, 525, 535, 511, 496, 557, 626, 625, 572, 512, 494, 355, 248, 162, 77, 22, 2};
+const int aGroups[21] = {5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105};
+const int lGroups = 21;
+const int lowPersons = 1400; // EDITABLE ; age limit
+const int highPersons = 5536; // EDITABLE; age limit
+
+const int dlen[4] = {1810, 1730, 71, 61};
+const int dbmi[4] = {262, 257, 34, 41};
+int test = 0;
+int age = 0;
+int length = 0;
+int bmi = 0;
+int ahi =0;
+int weight =0;
+
+int multLg(int a, int b, int div){
+    return a*b/div;
+}
+
+typedef struct{
+    int sens;
+    int spec;
+    int cost;
+} DTest;
+
+const DTest dStopBang = {930,430,30};
+const DTest dBerlinQ = {760,590,30};
+
+typedef struct{
+    int avg;
+    int stdev;
+} Gen ;
+
+typedef struct{
+    int sleepy;
+    int sleepyQ;
+    int ahi;
+    int ahiQ;
+} Evidence;
+
+Gen mBmi[4] = { {252, 32}, {262, 34}, {265,34}, {268, 34}};
+Gen fBmi[4] = { {244, 43}, {247, 41}, {257,47}, {264, 44}};
+const int aBmi[4] = {30, 40, 50, 60};
+const int lBmi = 4;
+Evidence patientProfile = {0,0,0,0};
+
+const int yAhi[3] = {800, 138, 62};
+const int oAhi[3] = {500,  300, 200};
+
+const int ybAhi[3] = {600, 238, 162};
+const int obAhi[3] = {30,  400, 300};
+const int vAhi[3] = {5, 15, 40};
+const int lAhi = 3;
+
+bool sleepy = 0;
+const int sleepyGen[6] = {200,300,500,500,500,500};
+double rni(Gen a){
+   return random_normal((0.0+a.avg)/10, (0.0+a.stdev)/10);
+}
+Gen larr(){
+    Gen z = {dlen[gender], dlen[gender+2]};
+    return z;
+}
+double rn(int a[4])
+{
+    Gen z = {a[gender], a[gender+2]};
+    return rni(z);
+}
+
+
+Gen lahi(){
+    Gen z = {bmi*15-100,30};
+    return z;
+}
+
+Gen lweight(){
+    Gen z = {(bmi*length/100)*length/10,0};
+    return z;
+}
+
+
+int calcAge(int ageLoc){
+    int i=0;
+    int calcAge = 0;
+
+    for(i=0;i&lt;lGroups;i++){
+        int v = fGroups[i];
+        if(gender == MALE){
+            v = mGroups[i];
+        }
+        if(ageLoc &gt; v){
+            calcAge = aGroups[i];
+        } else {
+            if(ageLoc &gt; 0 &amp;&amp; v &gt; 0){
+                calcAge = calcAge + (ageLoc*5 / v);
+            }
+        }
+        ageLoc = ageLoc - v;
+    }
+    return calcAge;
+}
+
+int calcAhi(int num){
+    int z[3] = yAhi;
+    int i =0;
+    int ans = 0;
+    int l = 0;
+    if(bmi&gt;30){
+        z=ybAhi;
+    }
+    if(age &gt;= 50){
+        z = oAhi;
+        if(bmi &gt; 30){
+            z = obAhi;
+        }
+    } 
+
+    for( i=0;i&lt;lAhi;i++){
+        if(num &gt; z[i]){
+            ans = vAhi[i];
+        } else {
+           if(num &gt; 0 &amp;&amp; z[i] &gt; 0){
+                if(i&gt;0){
+                  l = vAhi[i-1];      
+                }
+                ans = ans + (vAhi[i]-l)*num/z[i];
+            }
+        }
+        num = num - z[i];
+    }
+    return ans;
+}
+
+Gen lbmi(){
+    Gen z[4] = fBmi;
+    int a = 0;
+    int i=0;
+    if(gender==MALE){
+        z = mBmi;
+    }
+    for(i=0;i&lt;lBmi;i++){
+        if(age &gt; aBmi[i]){
+           a = i;         
+        }
+    }
+
+    return z[a];
+}
+
+double gbmi(){
+    return rni(lbmi());
+}
+void calcSleepy(int val){
+
+    int old = 0;
+    int ahiLevel =0;
+    if(age&gt;50){
+        old = 1;
+    }
+
+    if (ahi &gt; 5){
+        ahiLevel = 2;
+    }
+    if(ahi &gt; 15){
+        ahiLevel = 4;
+    }
+    sleepy = (sleepyGen[(ahiLevel + old)] &lt; val);
+}
+int CPAP_DETECTION_VALUE = 30; // Cut-off: if the patient keeps CPAP for at least this long, they have OSAS.
+int CPAP_RUN_TIME=30;
+
+int cpap_determination_time = 0; // How long does this patient keep the treetment?
+int cpap_effect_time = 0; // How long does it take before CPAP is noticable for this patient?
+
+/*
+  Channels
+*/
+broadcast chan S_WAIT, S_START;
+broadcast chan DIAGNOSED;
+broadcast chan INITIALIZE, SIMULATION_START, DIAG_START;
+broadcast chan AM_WAIT, AM_START, AM_NEG, AM_POS;
+broadcast chan Q_WAIT, Q_START, Q_LOW, Q_MID, Q_HIGH;
+broadcast chan ODI5_WAIT, ODI5_START, ODI5_NEG, ODI5_POS;
+broadcast chan ODI15_WAIT, ODI15_START, ODI15_NEG, ODI15_POS;
+broadcast chan NFLOW_WAIT, NFLOW_START, NFLOW_NEG, NFLOW_POS;
+broadcast chan CPAP_WAIT, START_CPAP, STOP_CPAP, GIVE_CPAP, ACCEPT_CPAP, NO_CPAP, CPAP_POS, CPAP_NEG;
+broadcast chan DDT_START, DDT_POS, DDT_NEG, DDT_WAIT;
+broadcast chan ADT_START, ADT_POS, ADT_NEG, ADT_WAIT;
+broadcast chan PSG_WAIT, PSG_START, PSG_POS, PSG_NEG;
+broadcast chan PG_WAIT, PG_START, PG_POS, PG_NEG;
+broadcast chan PZG_WAIT, PZG_START, PZG_POS, PZG_NEG;
+broadcast chan HSAT_WAIT, HSAT_START, HSAT_POS, HSAT_NEG, HSAT_FAIL;
+
+broadcast chan START_TREAT;
+clock cpap_treatment_time;
+clock cpap_total_time;
+int cpap_forever_time = 24;
+bool cpap_forever = false;
+// Test statistics; currently not in use. 
+// Left: percentage positive if has_osa, right: percentage positive if not has_osa.
+double p_ais[2] = {10.0, 4.7};
+double p_berlin_q[2] = {32.2, 40.7};
+double p_stop_q[2] = {36.7, 54.7};
+double p_stopbang_q[2] = {45.6, 70.9};
+
+int TOTAL_COST = 0;
+
+clock mover;
+clock ttt; // Time to Treatent
+clock ttd; // Time to Diagnosis
+clock ttc; // Time to correct diagnosis
+clock total_time;
+clock tot;
+bool osa=0;
+int osa_ans = -1;
+bool hasOsa(){
+    return ahi &gt; 5 &amp;&amp; sleepy;
+}</declaration>
+	<template>
+		<name x="5" y="5">PatientGenerator</name>
+		<parameter>int i</parameter>
+		<declaration>// Place local declarations here.</declaration>
+		<location id="id0" x="-697" y="-85">
+			<committed/>
+		</location>
+		<location id="id1" x="-960" y="-42">
+			<committed/>
+		</location>
+		<location id="id2" x="-697" y="34">
+			<committed/>
+		</location>
+		<location id="id3" x="-586" y="-85">
+			<committed/>
+		</location>
+		<location id="id4" x="-510" y="-85">
+		</location>
+		<branchpoint id="id5" x="-866" y="-42">
+		</branchpoint>
+		<init ref="id1"/>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-561" y="-68">SIMULATION_START!</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="select" x="-637" y="-34">a: int[0,5], b:int[1,5]</label>
+			<label kind="assignment" x="-671" y="-17">ahi=a, sleepy=(b==5)</label>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id3"/>
+			<label kind="select" x="-679" y="-136">a:int[5,15]</label>
+			<label kind="assignment" x="-705" y="-119">ahi = a, sleepy=1</label>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id2"/>
+			<label kind="assignment" x="-850" y="17">osa=0, osa_ans=0</label>
+			<label kind="probability" x="-807" y="-17">1000-PREV</label>
+			<nail x="-756" y="25"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id0"/>
+			<label kind="assignment" x="-807" y="-110">osa=1,osa_ans=1</label>
+			<label kind="probability" x="-841" y="-76">PREV</label>
+			<nail x="-781" y="-85"/>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id5"/>
+		</transition>
+	</template>
+	<template>
+		<name>TimerState</name>
+		<location id="id6" x="0" y="0">
+			<name x="-10" y="-34">S</name>
+			<label kind="invariant" x="17" y="0">mover&lt;=1&amp;&amp;ttd'==0&amp;&amp;ttt'==0&amp;&amp;mover'==diagnosed*10&amp;&amp;ttc'==0</label>
+		</location>
+		<location id="id7" x="34" y="-348">
+			<name x="24" y="-382">DIAGN</name>
+			<label kind="invariant" x="59" y="-340">ttd'==0&amp;&amp;ttt'==0&amp;&amp;ttc'==0</label>
+		</location>
+		<location id="id8" x="0" y="-119">
+			<committed/>
+		</location>
+		<location id="id9" x="93" y="-187">
+			<committed/>
+		</location>
+		<location id="id10" x="-60" y="-196">
+			<committed/>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id7"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id7"/>
+			<label kind="assignment" x="-153" y="-246">ttc=total_time</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="-510" y="-161">(is_diagnosed_has_osa&amp;&amp;osa) || (is_diagnosed_no_osa &amp;&amp; !osa)</label>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="93" y="-153">(is_diagnosed_no_osa&amp;&amp;osa) || (is_diagnosed_has_osa &amp;&amp; !osa)</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-34" y="170">NO_CPAP?</label>
+			<label kind="assignment" x="-43" y="195">ttt=total_time</label>
+			<nail x="68" y="195"/>
+			<nail x="-68" y="195"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="26" y="-527">NO_CPAP?</label>
+			<label kind="assignment" x="9" y="-510">ttt=total_time</label>
+			<nail x="136" y="-493"/>
+			<nail x="-42" y="-493"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-42" y="127">CPAP_NEG?</label>
+			<label kind="assignment" x="-42" y="144">ttt=total_time</label>
+			<nail x="51" y="144"/>
+			<nail x="-51" y="144"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="0" y="-459">CPAP_NEG?</label>
+			<label kind="assignment" x="0" y="-450">ttt=total_time</label>
+			<nail x="93" y="-433"/>
+			<nail x="-8" y="-433"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-144" y="-374">START_CPAP?</label>
+			<label kind="assignment" x="-144" y="-357">ttt=total_time</label>
+			<nail x="-42" y="-297"/>
+			<nail x="-42" y="-399"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id6"/>
+			<label kind="synchronisation" x="-178" y="0">START_CPAP?</label>
+			<label kind="assignment" x="-178" y="-17">ttt=total_time</label>
+			<nail x="-76" y="-43"/>
+			<nail x="-76" y="51"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="guard" x="8" y="-85">mover &gt;=1</label>
+			<label kind="assignment" x="8" y="-68">ttd = total_time</label>
+		</transition>
+	</template>
+	<template>
+		<name>History</name>
+		<location id="id11" x="0" y="0">
+		</location>
+		<init ref="id11"/>
+	</template>
+	<template>
+		<name>WaitingList</name>
+		<parameter>broadcast chan &amp;START, broadcast chan &amp;DONE, const int wmin, const int wmax</parameter>
+		<declaration>clock w;
+int u;</declaration>
+		<location id="id12" x="25" y="136">
+			<name x="17" y="153">IDLE</name>
+		</location>
+		<location id="id13" x="194" y="30">
+			<name x="211" y="22">WAITING</name>
+			<label kind="invariant" x="169" y="-4">w&lt;=u</label>
+		</location>
+		<location id="id14" x="195" y="136">
+			<name x="212" y="128">D</name>
+			<urgent/>
+		</location>
+		<location id="id15" x="24" y="30">
+			<urgent/>
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id13"/>
+			<label kind="select" x="33" y="-12">c: int[wmin, wmax]</label>
+			<label kind="assignment" x="67" y="5">w=0, u=c</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id12"/>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id14"/>
+			<label kind="guard" x="143" y="64">w&gt;=u</label>
+			<label kind="synchronisation" x="143" y="81">DONE!</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="33" y="81">START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>CpapProgress</name>
+		<declaration>int i=0;
+int observed_effect = 100;
+int adherence = 100;
+int effectiveness = 0;
+clock t;
+void setParams(){
+    effectiveness= 10;
+    if(ahi&gt;5){
+            effectiveness= 60;
+    }
+    if(ahi&gt;10){
+ effectiveness= 70;
+    }
+    if(ahi&gt;25){
+         effectiveness= 80;
+    }
+    // TODO: Randomize this
+
+}
+
+void setObservedEffect(){
+    // TODO: randomize effect a bit
+    int effectThisWeek =  multLg(effectiveness, adherence, 100);
+    observed_effect =  multLg(effectThisWeek, 20,  100+i) + multLg(observed_effect, 90+i, 100+i);
+}
+
+void setAdherence(){
+    adherence = multLg(observed_effect,40, 100) + 20+multLg(adherence,40, 100);
+}</declaration>
+		<location id="id16" x="-263" y="-170">
+			<name x="-297" y="-153">Yes</name>
+			<label kind="invariant" x="-263" y="-153">t&lt;=1&amp;&amp;ttt'==0</label>
+		</location>
+		<location id="id17" x="-374" y="42">
+			<name x="-383" y="0">NO</name>
+		</location>
+		<location id="id18" x="-943" y="-93">
+			<name x="-953" y="-127">A</name>
+			<urgent/>
+		</location>
+		<location id="id19" x="-612" y="-93">
+			<urgent/>
+		</location>
+		<location id="id20" x="-450" y="-170">
+			<name x="-460" y="-204">ACC</name>
+			<urgent/>
+		</location>
+		<location id="id21" x="-459" y="-17">
+			<urgent/>
+		</location>
+		<location id="id22" x="-824" y="-93">
+		</location>
+		<location id="id23" x="-127" y="-170">
+			<label kind="invariant" x="-137" y="-153">ttt'==0</label>
+			<urgent/>
+		</location>
+		<location id="id24" x="0" y="-136">
+			<label kind="invariant" x="-10" y="-119">ttt'==0</label>
+		</location>
+		<branchpoint id="id25" x="-493" y="-93">
+		</branchpoint>
+		<init ref="id18"/>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="-92" y="-195">CPAP_NEG!</label>
+			<nail x="-68" y="-136"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id23"/>
+			<label kind="guard" x="-221" y="-212">(adherence&lt;=50&amp;&amp; not cpap_forever)</label>
+			<label kind="synchronisation" x="-245" y="-187">STOP_CPAP!</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id16"/>
+			<label kind="guard" x="-314" y="-323">t&gt;=1&amp;&amp;(adherence&gt;50||cpap_forever)</label>
+			<label kind="assignment" x="-323" y="-357">t=0,setObservedEffect(),setAdherence(), i+=1</label>
+			<nail x="-203" y="-272"/>
+			<nail x="-331" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id22"/>
+			<label kind="assignment" x="-925" y="-93">t=0</label>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-408" y="-204">START_CPAP!</label>
+			<label kind="assignment" x="-527" y="-238">setParams(), t=0</label>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-476" y="25">NO_CPAP!</label>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id25"/>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id21"/>
+			<label kind="probability" x="-467" y="-59">3</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id20"/>
+			<label kind="probability" x="-459" y="-136">7</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-739" y="-93">GIVE_CPAP?</label>
+			<label kind="assignment" x="-806" y="-93">t=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>CpapState</name>
+		<location id="id26" x="-544" y="-127">
+			<name x="-595" y="-161">NO_CPAP</name>
+			<label kind="invariant" x="-875" y="-110">cpap_treatment_time'== 0&amp;&amp; cpap_total_time'==0</label>
+		</location>
+		<location id="id27" x="-280" y="-136">
+			<name x="-280" y="-170">CPAP</name>
+			<label kind="invariant" x="-290" y="-119">cpap_treatment_time'==1 &amp;&amp; cpap_total_time'==1&amp;&amp;cpap_treatment_time &lt;=cpap_forever_time</label>
+		</location>
+		<location id="id28" x="-280" y="-272">
+			<name x="-290" y="-306">FOREVER</name>
+		</location>
+		<init ref="id26"/>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id28"/>
+			<label kind="guard" x="-276" y="-242">cpap_treatment_time &gt;= cpap_forever_time</label>
+			<label kind="synchronisation" x="-276" y="-225">CPAP_POS!</label>
+			<label kind="assignment" x="-280" y="-204">tot=ttt</label>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-468" y="-246">STOP_CPAP?</label>
+			<label kind="assignment" x="-544" y="-229">cpap_treatment_time := 0,ttt=tot</label>
+			<nail x="-416" y="-212"/>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="-459" y="-59">START_CPAP?</label>
+			<nail x="-416" y="-59"/>
+		</transition>
+	</template>
+	<template>
+		<name>Test</name>
+		<parameter>bool &amp;property, int r_TP, int r_FN, int r_TN,  int r_FP,  broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_POSITIVE,  urgent broadcast chan &amp;TEST_NEGATIVE, urgent broadcast chan &amp;TEST_FAIL, int costs</parameter>
+		<location id="id29" x="137" y="32">
+			<name x="70" y="5">Positive</name>
+			<urgent/>
+		</location>
+		<location id="id30" x="230" y="32">
+			<name x="248" y="5">Negative</name>
+			<urgent/>
+		</location>
+		<location id="id31" x="187" y="340">
+			<name x="172" y="365">Idle</name>
+		</location>
+		<location id="id32" x="187" y="253">
+			<urgent/>
+		</location>
+		<location id="id33" x="112" y="167">
+			<urgent/>
+		</location>
+		<location id="id34" x="246" y="170">
+			<urgent/>
+		</location>
+		<branchpoint id="id35" x="231" y="90">
+		</branchpoint>
+		<branchpoint id="id36" x="138" y="90">
+		</branchpoint>
+		<init ref="id31"/>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id35"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id36"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="187" y="289">START_TEST?</label>
+			<label kind="assignment" x="187" y="306">TOTAL_COST += costs</label>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="248" y="-12">TEST_NEGATIVE!</label>
+			<nail x="333" y="33"/>
+			<nail x="331" y="340"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="19" y="-12">TEST_POSITIVE!</label>
+			<nail x="70" y="33"/>
+			<nail x="53" y="33"/>
+			<nail x="51" y="340"/>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id30"/>
+			<label kind="probability" x="248" y="65">r_TN</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id29"/>
+			<label kind="probability" x="162" y="24">r_FP</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id29"/>
+			<label kind="probability" x="103" y="66">r_TP</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id30"/>
+			<label kind="probability" x="145" y="92">r_FN</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id34"/>
+			<label kind="guard" x="221" y="221">property == 0</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="59" y="221">property == 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>fTest</name>
+		<parameter>int treshold, bool lowerThan, int &amp;value, int r_TP, int r_FN, int r_TN,  int r_FP,  broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_POSITIVE,  urgent broadcast chan &amp;TEST_NEGATIVE, urgent broadcast chan &amp;TEST_FAIL, int costs</parameter>
+		<declaration>
+bool test(){
+   bool a = treshold &lt; value;
+   
+    if (lowerThan){
+        return !a;
+    }    
+    return a;
+
+
+}</declaration>
+		<location id="id37" x="137" y="32">
+			<name x="70" y="5">Positive</name>
+			<urgent/>
+		</location>
+		<location id="id38" x="230" y="32">
+			<name x="248" y="5">Negative</name>
+			<urgent/>
+		</location>
+		<location id="id39" x="185" y="373">
+			<name x="170" y="398">Idle</name>
+		</location>
+		<location id="id40" x="187" y="253">
+			<urgent/>
+		</location>
+		<location id="id41" x="112" y="167">
+			<urgent/>
+		</location>
+		<location id="id42" x="248" y="175">
+			<urgent/>
+		</location>
+		<branchpoint id="id43" x="231" y="90">
+		</branchpoint>
+		<branchpoint id="id44" x="138" y="90">
+		</branchpoint>
+		<init ref="id39"/>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id43"/>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id44"/>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id40"/>
+			<label kind="synchronisation" x="195" y="304">START_TEST?</label>
+			<label kind="assignment" x="185" y="322">TOTAL_COST += costs</label>
+			<nail x="185" y="271"/>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id39"/>
+			<label kind="synchronisation" x="248" y="-12">TEST_NEGATIVE!</label>
+			<nail x="333" y="31"/>
+			<nail x="331" y="372"/>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id39"/>
+			<label kind="synchronisation" x="19" y="-12">TEST_POSITIVE!</label>
+			<nail x="36" y="31"/>
+			<nail x="19" y="31"/>
+			<nail x="17" y="372"/>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id38"/>
+			<label kind="probability" x="248" y="65">r_TN</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id37"/>
+			<label kind="probability" x="162" y="24">r_FP</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id37"/>
+			<label kind="probability" x="103" y="66">r_TP</label>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id38"/>
+			<label kind="probability" x="145" y="92">r_FN</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id42"/>
+			<label kind="guard" x="223" y="209">!test()</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id41"/>
+			<label kind="guard" x="102" y="204">test()</label>
+		</transition>
+	</template>
+	<template>
+		<name>Test3</name>
+		<location id="id45" x="218" y="436">
+			<name x="221" y="392">Boep</name>
+			<urgent/>
+		</location>
+		<location id="id46" x="94" y="52">
+			<name x="86" y="18">High</name>
+			<urgent/>
+		</location>
+		<location id="id47" x="323" y="52">
+			<name x="357" y="26">Low</name>
+			<urgent/>
+		</location>
+		<location id="id48" x="218" y="580">
+			<name x="208" y="546">Idle</name>
+		</location>
+		<location id="id49" x="218" y="351">
+			<urgent/>
+		</location>
+		<location id="id50" x="170" y="256">
+			<urgent/>
+		</location>
+		<location id="id51" x="264" y="256">
+			<urgent/>
+		</location>
+		<location id="id52" x="213" y="52">
+			<name x="203" y="18">Middle</name>
+			<urgent/>
+		</location>
+		<branchpoint id="id53" x="262" y="188">
+		</branchpoint>
+		<branchpoint id="id54" x="169" y="188">
+		</branchpoint>
+		<init ref="id48"/>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="400" y="103">TEST_MID!</label>
+			<nail x="323" y="-7"/>
+			<nail x="476" y="-7"/>
+			<nail x="476" y="579"/>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id52"/>
+			<label kind="probability" x="238" y="78">r_NM</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id52"/>
+			<label kind="probability" x="153" y="78">r_PM</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id53"/>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id54"/>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id49"/>
+			<label kind="assignment" x="221" y="375">TOTAL_COST = TOTAL_COST +  costs</label>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id45"/>
+			<label kind="synchronisation" x="226" y="469">START_TEST?</label>
+			<label kind="assignment" x="218" y="529">TOTAL_COST += costs</label>
+			<nail x="218" y="478"/>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="391" y="129">TEST_LOW!</label>
+			<nail x="391" y="52"/>
+			<nail x="391" y="493"/>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id48"/>
+			<label kind="synchronisation" x="17" y="103">TEST_HIGH!</label>
+			<nail x="43" y="2"/>
+			<nail x="18" y="2"/>
+			<nail x="17" y="579"/>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id47"/>
+			<label kind="probability" x="298" y="112">r_NL</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id46"/>
+			<label kind="probability" x="196" y="120">r_NH</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id46"/>
+			<label kind="probability" x="102" y="129">r_PH</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id47"/>
+			<label kind="probability" x="255" y="112">r_PL</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id51"/>
+			<label kind="guard" x="247" y="299">osa== 0</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id50"/>
+			<label kind="guard" x="94" y="299">osa == 1</label>
+		</transition>
+	</template>
+	<template>
+		<name>TestAM</name>
+		<parameter>int costs</parameter>
+		<location id="id55" x="0" y="0">
+			<name x="-10" y="-34">B</name>
+			<committed/>
+		</location>
+		<location id="id56" x="-93" y="-153">
+			<name x="-103" y="-187">C</name>
+			<committed/>
+		</location>
+		<location id="id57" x="-110" y="-484">
+			<name x="-120" y="-518">F</name>
+			<urgent/>
+		</location>
+		<location id="id58" x="119" y="-501">
+			<name x="109" y="-535">G</name>
+			<urgent/>
+		</location>
+		<location id="id59" x="178" y="-136">
+			<name x="168" y="-170">D</name>
+			<committed/>
+		</location>
+		<location id="id60" x="297" y="-144">
+			<name x="287" y="-178">E</name>
+			<committed/>
+		</location>
+		<location id="id61" x="0" y="110">
+			<name x="-10" y="76">A</name>
+		</location>
+		<branchpoint id="id62" x="178" y="-212">
+		</branchpoint>
+		<branchpoint id="id63" x="-93" y="-255">
+		</branchpoint>
+		<init ref="id61"/>
+		<transition>
+			<source ref="id58"/>
+			<target ref="id61"/>
+			<label kind="synchronisation" x="137" y="-518">AM_NEG!</label>
+			<nail x="450" y="-501"/>
+			<nail x="442" y="119"/>
+		</transition>
+		<transition>
+			<source ref="id57"/>
+			<target ref="id61"/>
+			<label kind="synchronisation" x="-228" y="-501">AM_POS!</label>
+			<nail x="-246" y="-484"/>
+			<nail x="-238" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id61"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="0" y="38">AM_START?</label>
+			<label kind="assignment" x="0" y="55">TOTAL_COST += costs</label>
+		</transition>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id63"/>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id57"/>
+			<label kind="probability" x="-106" y="-373">100</label>
+			<nail x="-102" y="-297"/>
+		</transition>
+		<transition>
+			<source ref="id63"/>
+			<target ref="id58"/>
+			<label kind="probability" x="-51" y="-323">0</label>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id57"/>
+			<label kind="probability" x="51" y="-357">1</label>
+			<nail x="-110" y="-467"/>
+		</transition>
+		<transition>
+			<source ref="id62"/>
+			<target ref="id58"/>
+			<label kind="probability" x="119" y="-373">9</label>
+		</transition>
+		<transition>
+			<source ref="id59"/>
+			<target ref="id62"/>
+		</transition>
+		<transition>
+			<source ref="id60"/>
+			<target ref="id58"/>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id60"/>
+			<label kind="guard" x="221" y="-93">sleepy==0</label>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id59"/>
+			<label kind="guard" x="-42" y="-119">sleepy==1 &amp;&amp;osa==0</label>
+		</transition>
+		<transition>
+			<source ref="id55"/>
+			<target ref="id56"/>
+			<label kind="guard" x="-136" y="-93">osa==1</label>
+		</transition>
+	</template>
+	<template>
+		<name>TestPSG</name>
+		<parameter>urgent broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_HIGH, urgent broadcast chan &amp;TEST_LOW, int costs</parameter>
+		<declaration>int res =0;
+int testValue = 0;
+int gtv(){
+    if (ahi&gt;10){
+    return 1000;
+    }
+    if(ahi&gt;5){
+        return 1000;
+    }
+    return 100;
+}</declaration>
+		<location id="id64" x="218" y="512">
+			<urgent/>
+		</location>
+		<location id="id65" x="153" y="390">
+			<name x="110" y="374">High</name>
+			<urgent/>
+		</location>
+		<location id="id66" x="323" y="391">
+			<name x="340" y="374">Low</name>
+			<urgent/>
+		</location>
+		<location id="id67" x="218" y="580">
+			<name x="229" y="561">Idle</name>
+		</location>
+		<location id="id68" x="218" y="453">
+			<urgent/>
+		</location>
+		<init ref="id67"/>
+		<transition>
+			<source ref="id64"/>
+			<target ref="id68"/>
+			<label kind="select" x="221" y="467">xx:int[0,1000]</label>
+			<label kind="assignment" x="221" y="476">res=xx</label>
+		</transition>
+		<transition>
+			<source ref="id67"/>
+			<target ref="id64"/>
+			<label kind="synchronisation" x="221" y="527">START_TEST?</label>
+			<label kind="assignment" x="221" y="544">testValue=gtv(), TOTAL_COST += costs</label>
+		</transition>
+		<transition>
+			<source ref="id66"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="289" y="561">TEST_LOW!</label>
+			<nail x="374" y="391"/>
+			<nail x="374" y="578"/>
+		</transition>
+		<transition>
+			<source ref="id65"/>
+			<target ref="id67"/>
+			<label kind="synchronisation" x="102" y="561">TEST_HIGH!</label>
+			<nail x="102" y="389"/>
+			<nail x="102" y="578"/>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id66"/>
+			<label kind="guard" x="246" y="433">res&gt;=testValue</label>
+		</transition>
+		<transition>
+			<source ref="id68"/>
+			<target ref="id65"/>
+			<label kind="guard" x="102" y="433">res&lt;testValue</label>
+		</transition>
+	</template>
+	<template>
+		<name>TestChoose</name>
+		<parameter>int odds, broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_POSITIVE,  urgent broadcast chan &amp;TEST_NEGATIVE, broadcast chan &amp;A_TEST, urgent broadcast chan &amp;A_POSITIVE,  urgent broadcast chan &amp;A_NEGATIVE, broadcast chan &amp;B_TEST, urgent broadcast chan &amp;B_POSITIVE,  urgent broadcast chan &amp;B_NEGATIVE</parameter>
+		<location id="id69" x="0" y="0">
+		</location>
+		<location id="id70" x="0" y="-144">
+			<committed/>
+		</location>
+		<location id="id71" x="-93" y="-391">
+			<committed/>
+		</location>
+		<location id="id72" x="110" y="-391">
+			<committed/>
+		</location>
+		<location id="id73" x="17" y="-518">
+		</location>
+		<location id="id74" x="399" y="-544">
+			<committed/>
+		</location>
+		<location id="id75" x="-382" y="-518">
+			<committed/>
+		</location>
+		<branchpoint id="id76" x="-8" y="-204">
+		</branchpoint>
+		<init ref="id69"/>
+		<transition>
+			<source ref="id74"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="85" y="0">TEST_NEGATIVE!</label>
+			<nail x="416" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id71"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="-75" y="-471">A_TEST!</label>
+		</transition>
+		<transition>
+			<source ref="id75"/>
+			<target ref="id69"/>
+			<label kind="synchronisation" x="-323" y="-8">TEST_POSITIVE!</label>
+			<nail x="-348" y="-25"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="-186" y="-505">B_POSITIVE?</label>
+			<nail x="-204" y="-459"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id75"/>
+			<label kind="synchronisation" x="-160" y="-565">A_POSITIVE?</label>
+			<nail x="-178" y="-578"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="35" y="-514">B_NEGATIVE?</label>
+			<nail x="178" y="-476"/>
+		</transition>
+		<transition>
+			<source ref="id73"/>
+			<target ref="id74"/>
+			<label kind="synchronisation" x="35" y="-577">A_NEGATIVE?</label>
+			<nail x="178" y="-603"/>
+		</transition>
+		<transition>
+			<source ref="id72"/>
+			<target ref="id73"/>
+			<label kind="synchronisation" x="35" y="-471">B_TEST!</label>
+		</transition>
+		<transition>
+			<source ref="id76"/>
+			<target ref="id72"/>
+			<label kind="probability" x="18" y="-310">1000-odds</label>
+		</transition>
+		<transition>
+			<source ref="id76"/>
+			<target ref="id71"/>
+			<label kind="probability" x="-75" y="-310">odds</label>
+		</transition>
+		<transition>
+			<source ref="id70"/>
+			<target ref="id76"/>
+		</transition>
+		<transition>
+			<source ref="id69"/>
+			<target ref="id70"/>
+			<label kind="synchronisation" x="0" y="-89">START_TEST?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TestHSAT</name>
+		<parameter>urgent broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_HIGH, urgent broadcast chan &amp;TEST_LOW, urgent broadcast chan &amp;TEST_FAIL, int costs</parameter>
+		<declaration>int res =0;
+int testValue = 0;
+int wrongOdds = 50;
+int gtv(){
+    if (ahi&gt;10){
+    return 950;
+    }
+    if(ahi&gt;5){
+        return 900;
+    }
+    return 100;
+}</declaration>
+		<location id="id77" x="212" y="501">
+			<urgent/>
+		</location>
+		<location id="id78" x="153" y="272">
+			<name x="110" y="255">High</name>
+			<urgent/>
+		</location>
+		<location id="id79" x="289" y="272">
+			<name x="306" y="255">Low</name>
+			<urgent/>
+		</location>
+		<location id="id80" x="212" y="578">
+			<name x="229" y="561">Idle</name>
+		</location>
+		<location id="id81" x="212" y="348">
+			<urgent/>
+		</location>
+		<location id="id82" x="-8" y="425">
+			<name x="8" y="408">Failed</name>
+			<committed/>
+		</location>
+		<branchpoint id="id83" x="212" y="425">
+		</branchpoint>
+		<init ref="id80"/>
+		<transition>
+			<source ref="id82"/>
+			<target ref="id80"/>
+			<label kind="synchronisation" x="-8" y="544">TEST_FAIL!</label>
+			<nail x="-8" y="578"/>
+		</transition>
+		<transition>
+			<source ref="id83"/>
+			<target ref="id82"/>
+			<label kind="probability" x="110" y="408">wrongOdds</label>
+		</transition>
+		<transition>
+			<source ref="id83"/>
+			<target ref="id81"/>
+			<label kind="probability" x="212" y="382">1000-wrongOdds</label>
+		</transition>
+		<transition>
+			<source ref="id77"/>
+			<target ref="id83"/>
+			<label kind="select" x="221" y="450">xx:int[0,1000]</label>
+			<label kind="assignment" x="221" y="467">res=xx</label>
+		</transition>
+		<transition>
+			<source ref="id80"/>
+			<target ref="id77"/>
+			<label kind="synchronisation" x="221" y="518">START_TEST?</label>
+			<label kind="assignment" x="221" y="535">testValue=gtv(), TOTAL_COST += costs</label>
+		</transition>
+		<transition>
+			<source ref="id79"/>
+			<target ref="id80"/>
+			<label kind="synchronisation" x="365" y="300">TEST_LOW!</label>
+			<nail x="365" y="272"/>
+			<nail x="365" y="578"/>
+		</transition>
+		<transition>
+			<source ref="id78"/>
+			<target ref="id80"/>
+			<label kind="synchronisation" x="76" y="544">TEST_HIGH!</label>
+			<nail x="101" y="272"/>
+			<nail x="76" y="272"/>
+			<nail x="76" y="578"/>
+		</transition>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id79"/>
+			<label kind="guard" x="246" y="306">res&gt;=testValue</label>
+		</transition>
+		<transition>
+			<source ref="id81"/>
+			<target ref="id78"/>
+			<label kind="guard" x="85" y="306">res&lt;testValue</label>
+		</transition>
+	</template>
+	<template>
+		<name>DGGenInto</name>
+		<parameter>int i</parameter>
+		<location id="id84" x="824" y="323">
+			<urgent/>
+		</location>
+		<location id="id85" x="952" y="323">
+		</location>
+		<location id="id86" x="408" y="323">
+			<name x="425" y="323">START</name>
+		</location>
+		<location id="id87" x="1054" y="263">
+			<name x="1028" y="280">FOREVER</name>
+		</location>
+		<location id="id88" x="1623" y="824">
+			<name x="1623" y="824">OTHERTREATMENT</name>
+			<label kind="invariant" x="1623" y="854">ttt'==0&amp;&amp;tot'==0</label>
+		</location>
+		<location id="id89" x="527" y="323">
+			<urgent/>
+		</location>
+		<location id="id90" x="629" y="323">
+			<name x="646" y="323">ADT</name>
+		</location>
+		<location id="id91" x="723" y="262">
+			<urgent/>
+		</location>
+		<location id="id92" x="724" y="323">
+			<urgent/>
+		</location>
+		<location id="id93" x="824" y="263">
+			<name x="807" y="229">DIAGN_POS</name>
+			<urgent/>
+		</location>
+		<location id="id94" x="952" y="263">
+			<urgent/>
+		</location>
+		<init ref="id86"/>
+		<transition>
+			<source ref="id84"/>
+			<target ref="id85"/>
+			<label kind="assignment" x="841" y="323">diagnose(false)</label>
+		</transition>
+		<transition>
+			<source ref="id86"/>
+			<target ref="id89"/>
+			<label kind="synchronisation" x="374" y="297">SIMULATION_START?</label>
+		</transition>
+		<transition>
+			<source ref="id89"/>
+			<target ref="id90"/>
+			<label kind="synchronisation" x="544" y="306">ADT_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id91"/>
+			<label kind="synchronisation" x="620" y="263">ADT_POS?</label>
+		</transition>
+		<transition>
+			<source ref="id90"/>
+			<target ref="id92"/>
+			<label kind="synchronisation" x="637" y="340">ADT_NEG?</label>
+		</transition>
+		<transition>
+			<source ref="id92"/>
+			<target ref="id84"/>
+		</transition>
+		<transition>
+			<source ref="id91"/>
+			<target ref="id93"/>
+		</transition>
+		<transition>
+			<source ref="id93"/>
+			<target ref="id94"/>
+			<label kind="assignment" x="841" y="246">diagnose(true)</label>
+		</transition>
+		<transition>
+			<source ref="id94"/>
+			<target ref="id87"/>
+			<label kind="synchronisation" x="970" y="246">START_TREAT!</label>
+		</transition>
+	</template>
+	<template>
+		<name>TMSimp</name>
+		<parameter>int i</parameter>
+		<location id="id95" x="0" y="0">
+		</location>
+		<init ref="id95"/>
+	</template>
+	<template>
+		<name>DGhsatAPAP</name>
+		<parameter>int i</parameter>
+		<location id="id96" x="552" y="272">
+			<name x="569" y="255">DIAGNNEG</name>
+			<urgent/>
+		</location>
+		<location id="id97" x="535" y="59">
+			<name x="501" y="16">DIAGN_POS</name>
+			<urgent/>
+		</location>
+		<location id="id98" x="365" y="178">
+		</location>
+		<location id="id99" x="229" y="178">
+			<name x="238" y="144">started</name>
+			<committed/>
+		</location>
+		<location id="id100" x="136" y="178">
+		</location>
+		<location id="id101" x="765" y="59">
+		</location>
+		<location id="id102" x="552" y="195">
+			<name x="542" y="161">OTHERTREATMENT</name>
+		</location>
+		<location id="id103" x="926" y="59">
+			<name x="916" y="25">FOREVER</name>
+		</location>
+		<location id="id104" x="552" y="433">
+		</location>
+		<location id="id105" x="365" y="433">
+			<committed/>
+		</location>
+		<location id="id106" x="493" y="212">
+		</location>
+		<init ref="id100"/>
+		<transition>
+			<source ref="id96"/>
+			<target ref="id106"/>
+			<label kind="assignment" x="522" y="242">diagnose(false)</label>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id105"/>
+			<label kind="synchronisation" x="365" y="365">HSAT_FAIL?</label>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id105"/>
+			<label kind="synchronisation" x="416" y="221">HSAT_NEG?</label>
+			<nail x="450" y="272"/>
+		</transition>
+		<transition>
+			<source ref="id98"/>
+			<target ref="id97"/>
+			<label kind="synchronisation" x="425" y="42">HSAT_POS?</label>
+			<nail x="408" y="59"/>
+		</transition>
+		<transition>
+			<source ref="id99"/>
+			<target ref="id98"/>
+			<label kind="synchronisation" x="246" y="161">HSAT_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id100"/>
+			<target ref="id99"/>
+			<label kind="synchronisation" x="136" y="153">SIMULATION_START?</label>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id103"/>
+			<label kind="synchronisation" x="798" y="42">CPAP_POS?</label>
+			<label kind="assignment" x="782" y="59">tot=ttt</label>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id96"/>
+			<label kind="synchronisation" x="679" y="272">CPAP_NEG?</label>
+			<nail x="765" y="272"/>
+		</transition>
+		<transition>
+			<source ref="id97"/>
+			<target ref="id101"/>
+			<label kind="synchronisation" x="663" y="42">CPAP_WAIT!</label>
+			<label kind="assignment" x="553" y="59">diagnose(true)</label>
+		</transition>
+		<transition>
+			<source ref="id101"/>
+			<target ref="id102"/>
+			<label kind="synchronisation" x="612" y="178">NO_CPAP?</label>
+			<nail x="765" y="195"/>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id96"/>
+			<label kind="synchronisation" x="552" y="365">PSG_NEG?</label>
+			<nail x="552" y="365"/>
+		</transition>
+		<transition>
+			<source ref="id104"/>
+			<target ref="id97"/>
+			<label kind="synchronisation" x="569" y="416">PSG_POS?</label>
+			<nail x="833" y="433"/>
+			<nail x="833" y="170"/>
+		</transition>
+		<transition>
+			<source ref="id105"/>
+			<target ref="id104"/>
+			<label kind="synchronisation" x="391" y="407">PSG_WAIT!</label>
+		</transition>
+	</template>
+	<template>
+		<name>AsyncWait</name>
+		<location id="id107" x="0" y="0">
+		</location>
+		<init ref="id107"/>
+	</template>
+	<template>
+		<name>DGHSATthenPSG</name>
+		<parameter>int i</parameter>
+		<location id="id108" x="365" y="178">
+		</location>
+		<location id="id109" x="561" y="102">
+		</location>
+		<location id="id110" x="561" y="263">
+			<name x="578" y="246">DIAGNNEG</name>
+			<urgent/>
+		</location>
+		<location id="id111" x="493" y="102">
+			<urgent/>
+		</location>
+		<location id="id112" x="229" y="178">
+			<name x="238" y="144">started</name>
+			<committed/>
+		</location>
+		<location id="id113" x="136" y="178">
+		</location>
+		<location id="id114" x="765" y="59">
+		</location>
+		<location id="id115" x="901" y="195">
+			<name x="926" y="178">OTHERTREATMENT</name>
+		</location>
+		<location id="id116" x="901" y="59">
+			<name x="926" y="34">FOREVER</name>
+		</location>
+		<location id="id117" x="654" y="102">
+			<name x="644" y="68">DIAGN_POS</name>
+			<committed/>
+		</location>
+		<location id="id118" x="561" y="340">
+		</location>
+		<init ref="id113"/>
+		<transition>
+			<source ref="id110"/>
+			<target ref="id118"/>
+			<label kind="assignment" x="561" y="301">diagnose(false)</label>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id111"/>
+			<label kind="synchronisation" x="416" y="144">HSAT_FAIL?</label>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="408" y="204">HSAT_NEG?</label>
+			<nail x="450" y="263"/>
+		</transition>
+		<transition>
+			<source ref="id108"/>
+			<target ref="id111"/>
+			<label kind="synchronisation" x="391" y="85">HSAT_POS?</label>
+			<nail x="425" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id112"/>
+			<target ref="id108"/>
+			<label kind="synchronisation" x="246" y="161">HSAT_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id113"/>
+			<target ref="id112"/>
+			<label kind="synchronisation" x="136" y="153">SIMULATION_START?</label>
+		</transition>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id116"/>
+			<label kind="synchronisation" x="790" y="42">CPAP_POS?</label>
+		</transition>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="705" y="263">CPAP_NEG?</label>
+			<nail x="765" y="263"/>
+		</transition>
+		<transition>
+			<source ref="id117"/>
+			<target ref="id114"/>
+			<label kind="synchronisation" x="671" y="102">CPAP_WAIT!</label>
+			<nail x="714" y="102"/>
+		</transition>
+		<transition>
+			<source ref="id114"/>
+			<target ref="id115"/>
+			<label kind="synchronisation" x="790" y="178">NO_CPAP?</label>
+			<nail x="765" y="195"/>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id110"/>
+			<label kind="synchronisation" x="561" y="178">PSG_NEG?</label>
+		</transition>
+		<transition>
+			<source ref="id109"/>
+			<target ref="id117"/>
+			<label kind="synchronisation" x="569" y="127">PSG_POS?</label>
+			<label kind="assignment" x="569" y="110">diagnose(true)</label>
+		</transition>
+		<transition>
+			<source ref="id111"/>
+			<target ref="id109"/>
+			<label kind="synchronisation" x="493" y="76">PSG_WAIT!</label>
+		</transition>
+	</template>
+	<template>
+		<name>Referral</name>
+		<location id="id119" x="-1054" y="-238">
+		</location>
+		<location id="id120" x="-867" y="-238">
+			<committed/>
+		</location>
+		<location id="id121" x="-782" y="-161">
+			<committed/>
+		</location>
+		<location id="id122" x="-739" y="-238">
+			<committed/>
+		</location>
+		<location id="id123" x="-629" y="-85">
+			<committed/>
+		</location>
+		<location id="id124" x="-629" y="17">
+			<name x="-620" y="-17">DIAG</name>
+		</location>
+		<location id="id125" x="-654" y="-238">
+			<committed/>
+		</location>
+		<location id="id126" x="-646" y="-357">
+			<urgent/>
+		</location>
+		<branchpoint id="id127" x="-561" y="-238">
+		</branchpoint>
+		<branchpoint id="id128" x="-688" y="-161">
+		</branchpoint>
+		<init ref="id119"/>
+		<transition>
+			<source ref="id126"/>
+			<target ref="id123"/>
+			<nail x="-459" y="-365"/>
+			<nail x="-425" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id123"/>
+			<label kind="probability" x="-595" y="-136">1</label>
+		</transition>
+		<transition>
+			<source ref="id127"/>
+			<target ref="id126"/>
+			<label kind="probability" x="-595" y="-297">3</label>
+		</transition>
+		<transition>
+			<source ref="id125"/>
+			<target ref="id127"/>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id126"/>
+			<label kind="guard" x="-748" y="-314">ahi &lt;=7</label>
+		</transition>
+		<transition>
+			<source ref="id122"/>
+			<target ref="id125"/>
+			<label kind="guard" x="-714" y="-263">ahi &gt;7</label>
+		</transition>
+		<transition>
+			<source ref="id123"/>
+			<target ref="id124"/>
+			<label kind="synchronisation" x="-620" y="-42">DIAG_START!</label>
+		</transition>
+		<transition>
+			<source ref="id128"/>
+			<target ref="id123"/>
+			<label kind="probability" x="-671" y="-119">2</label>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id122"/>
+			<label kind="guard" x="-849" y="-267">sleepy==0</label>
+		</transition>
+		<transition>
+			<source ref="id128"/>
+			<target ref="id122"/>
+			<label kind="probability" x="-731" y="-195">5</label>
+		</transition>
+		<transition>
+			<source ref="id121"/>
+			<target ref="id128"/>
+		</transition>
+		<transition>
+			<source ref="id120"/>
+			<target ref="id121"/>
+			<label kind="guard" x="-892" y="-195">sleepy==1</label>
+		</transition>
+		<transition>
+			<source ref="id119"/>
+			<target ref="id120"/>
+			<label kind="synchronisation" x="-1037" y="-263">SIMULATION_START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TPhilHigh</name>
+		<parameter>int i</parameter>
+		<location id="id129" x="-416" y="-34">
+		</location>
+		<location id="id130" x="-289" y="-34">
+			<committed/>
+		</location>
+		<location id="id131" x="-204" y="-34">
+		</location>
+		<location id="id132" x="-110" y="42">
+			<committed/>
+		</location>
+		<location id="id133" x="-127" y="-119">
+			<committed/>
+		</location>
+		<location id="id134" x="-34" y="-59">
+			<committed/>
+		</location>
+		<init ref="id129"/>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id132"/>
+			<label kind="synchronisation" x="-203" y="21">Q_MID?</label>
+			<nail x="-221" y="34"/>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id132"/>
+			<label kind="synchronisation" x="-186" y="-13">Q_LOW?</label>
+		</transition>
+		<transition>
+			<source ref="id131"/>
+			<target ref="id133"/>
+			<label kind="synchronisation" x="-186" y="-93">Q_HIGH?</label>
+		</transition>
+		<transition>
+			<source ref="id132"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="-92" y="-25">DDT_NEG!</label>
+		</transition>
+		<transition>
+			<source ref="id133"/>
+			<target ref="id134"/>
+			<label kind="synchronisation" x="-109" y="-106">DDT_POS!</label>
+		</transition>
+		<transition>
+			<source ref="id134"/>
+			<target ref="id129"/>
+			<nail x="-51" y="-187"/>
+			<nail x="-416" y="-195"/>
+		</transition>
+		<transition>
+			<source ref="id130"/>
+			<target ref="id131"/>
+			<label kind="synchronisation" x="-280" y="-59">Q_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id129"/>
+			<target ref="id130"/>
+			<label kind="synchronisation" x="-398" y="-51">DDT_START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TPhilLow</name>
+		<parameter>int i</parameter>
+		<location id="id135" x="-204" y="-34">
+		</location>
+		<location id="id136" x="-110" y="42">
+			<committed/>
+		</location>
+		<location id="id137" x="-127" y="-119">
+			<committed/>
+		</location>
+		<location id="id138" x="-34" y="-59">
+			<committed/>
+		</location>
+		<location id="id139" x="-416" y="-34">
+		</location>
+		<location id="id140" x="-289" y="-34">
+			<committed/>
+		</location>
+		<init ref="id139"/>
+		<transition>
+			<source ref="id135"/>
+			<target ref="id137"/>
+			<label kind="synchronisation" x="-255" y="-119">Q_MID?</label>
+			<nail x="-204" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id135"/>
+			<target ref="id136"/>
+			<label kind="synchronisation" x="-212" y="0">Q_LOW?</label>
+		</transition>
+		<transition>
+			<source ref="id135"/>
+			<target ref="id137"/>
+			<label kind="synchronisation" x="-161" y="-76">Q_HIGH?</label>
+		</transition>
+		<transition>
+			<source ref="id136"/>
+			<target ref="id138"/>
+			<label kind="synchronisation" x="-76" y="0">DDT_NEG!</label>
+		</transition>
+		<transition>
+			<source ref="id137"/>
+			<target ref="id138"/>
+			<label kind="synchronisation" x="-109" y="-106">DDT_POS!</label>
+		</transition>
+		<transition>
+			<source ref="id138"/>
+			<target ref="id139"/>
+			<nail x="-34" y="-161"/>
+			<nail x="-416" y="-161"/>
+		</transition>
+		<transition>
+			<source ref="id140"/>
+			<target ref="id135"/>
+			<label kind="synchronisation" x="-280" y="-59">Q_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id139"/>
+			<target ref="id140"/>
+			<label kind="synchronisation" x="-398" y="-51">DDT_START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TStopBang</name>
+		<parameter>int i</parameter>
+		<location id="id141" x="-416" y="-34">
+		</location>
+		<location id="id142" x="-289" y="-34">
+			<committed/>
+		</location>
+		<location id="id143" x="-297" y="-136">
+		</location>
+		<location id="id144" x="-297" y="-204">
+			<committed/>
+		</location>
+		<location id="id145" x="-374" y="-280">
+			<committed/>
+		</location>
+		<location id="id146" x="-229" y="-280">
+			<committed/>
+		</location>
+		<location id="id147" x="-382" y="-408">
+			<committed/>
+		</location>
+		<location id="id148" x="-221" y="-408">
+			<committed/>
+		</location>
+		<branchpoint id="id149" x="-238" y="-331">
+		</branchpoint>
+		<branchpoint id="id150" x="-374" y="-340">
+		</branchpoint>
+		<init ref="id141"/>
+		<transition>
+			<source ref="id149"/>
+			<target ref="id147"/>
+			<label kind="probability" x="-314" y="-365">1000-dStopBang.spec</label>
+		</transition>
+		<transition>
+			<source ref="id149"/>
+			<target ref="id148"/>
+			<label kind="probability" x="-178" y="-348">dStopBang.spec</label>
+		</transition>
+		<transition>
+			<source ref="id146"/>
+			<target ref="id149"/>
+		</transition>
+		<transition>
+			<source ref="id150"/>
+			<target ref="id148"/>
+			<label kind="probability" x="-374" y="-476">1000-dStopBang.sens</label>
+		</transition>
+		<transition>
+			<source ref="id150"/>
+			<target ref="id147"/>
+			<label kind="probability" x="-493" y="-365">dStopBang.sens</label>
+		</transition>
+		<transition>
+			<source ref="id145"/>
+			<target ref="id150"/>
+		</transition>
+		<transition>
+			<source ref="id147"/>
+			<target ref="id141"/>
+			<label kind="synchronisation" x="-534" y="-425">DDT_POS!</label>
+			<nail x="-552" y="-408"/>
+			<nail x="-561" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id148"/>
+			<target ref="id141"/>
+			<label kind="synchronisation" x="-203" y="-425">DDT_NEG!</label>
+			<nail x="0" y="-408"/>
+			<nail x="-8" y="127"/>
+			<nail x="-408" y="127"/>
+		</transition>
+		<transition>
+			<source ref="id144"/>
+			<target ref="id146"/>
+			<label kind="guard" x="-255" y="-238">!osa</label>
+		</transition>
+		<transition>
+			<source ref="id144"/>
+			<target ref="id145"/>
+			<label kind="guard" x="-374" y="-246">osa</label>
+		</transition>
+		<transition>
+			<source ref="id143"/>
+			<target ref="id144"/>
+			<label kind="synchronisation" x="-297" y="-187">S_START?</label>
+		</transition>
+		<transition>
+			<source ref="id142"/>
+			<target ref="id143"/>
+			<label kind="synchronisation" x="-293" y="-102">S_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id141"/>
+			<target ref="id142"/>
+			<label kind="synchronisation" x="-398" y="-51">DDT_START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>TBerlinQ</name>
+		<parameter>int i</parameter>
+		<location id="id151" x="-382" y="-408">
+			<committed/>
+		</location>
+		<location id="id152" x="-221" y="-408">
+			<committed/>
+		</location>
+		<location id="id153" x="-229" y="-280">
+			<committed/>
+		</location>
+		<location id="id154" x="-374" y="-280">
+			<committed/>
+		</location>
+		<location id="id155" x="-416" y="-34">
+		</location>
+		<location id="id156" x="-297" y="-204">
+			<committed/>
+		</location>
+		<location id="id157" x="-297" y="-136">
+		</location>
+		<location id="id158" x="-289" y="-34">
+			<committed/>
+		</location>
+		<branchpoint id="id159" x="-238" y="-331">
+		</branchpoint>
+		<branchpoint id="id160" x="-374" y="-340">
+		</branchpoint>
+		<init ref="id155"/>
+		<transition>
+			<source ref="id159"/>
+			<target ref="id151"/>
+			<label kind="probability" x="-314" y="-365">1000-dBerlinQ.spec</label>
+		</transition>
+		<transition>
+			<source ref="id159"/>
+			<target ref="id152"/>
+			<label kind="probability" x="-178" y="-348">dBerlinQ.spec</label>
+		</transition>
+		<transition>
+			<source ref="id153"/>
+			<target ref="id159"/>
+		</transition>
+		<transition>
+			<source ref="id160"/>
+			<target ref="id152"/>
+			<label kind="probability" x="-374" y="-476">1000-dBerlinQ.sens</label>
+		</transition>
+		<transition>
+			<source ref="id160"/>
+			<target ref="id151"/>
+			<label kind="probability" x="-493" y="-365">dBerlinQ.sens</label>
+		</transition>
+		<transition>
+			<source ref="id154"/>
+			<target ref="id160"/>
+		</transition>
+		<transition>
+			<source ref="id151"/>
+			<target ref="id155"/>
+			<label kind="synchronisation" x="-534" y="-425">DDT_POS!</label>
+			<nail x="-552" y="-408"/>
+			<nail x="-561" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id152"/>
+			<target ref="id155"/>
+			<label kind="synchronisation" x="-203" y="-425">DDT_NEG!</label>
+			<nail x="0" y="-408"/>
+			<nail x="-8" y="127"/>
+			<nail x="-408" y="127"/>
+		</transition>
+		<transition>
+			<source ref="id156"/>
+			<target ref="id153"/>
+			<label kind="guard" x="-255" y="-238">!osa</label>
+		</transition>
+		<transition>
+			<source ref="id156"/>
+			<target ref="id154"/>
+			<label kind="guard" x="-374" y="-246">osa</label>
+		</transition>
+		<transition>
+			<source ref="id157"/>
+			<target ref="id156"/>
+			<label kind="synchronisation" x="-297" y="-187">S_START?</label>
+		</transition>
+		<transition>
+			<source ref="id158"/>
+			<target ref="id157"/>
+			<label kind="synchronisation" x="-293" y="-102">S_WAIT!</label>
+		</transition>
+		<transition>
+			<source ref="id155"/>
+			<target ref="id158"/>
+			<label kind="synchronisation" x="-398" y="-51">DDT_START?</label>
+		</transition>
+	</template>
+	<template>
+		<name>ADTSys</name>
+		<parameter>broadcast chan &amp;START_TEST, urgent broadcast chan &amp;TEST_POSITIVE,  urgent broadcast chan &amp;TEST_NEGATIVE</parameter>
+		<location id="id161" x="-824" y="-102">
+		</location>
+		<location id="id162" x="-671" y="-110">
+			<urgent/>
+		</location>
+		<location id="id163" x="-518" y="-110">
+		</location>
+		<location id="id164" x="-382" y="-204">
+			<urgent/>
+		</location>
+		<location id="id165" x="-382" y="-42">
+			<urgent/>
+		</location>
+		<init ref="id161"/>
+		<transition>
+			<source ref="id163"/>
+			<target ref="id165"/>
+			<label kind="synchronisation" x="-500" y="-93">TEST_NEGATIVE?</label>
+		</transition>
+		<transition>
+			<source ref="id165"/>
+			<target ref="id161"/>
+			<label kind="synchronisation" x="-687" y="-55">ADT_NEG!</label>
+			<nail x="-705" y="-34"/>
+		</transition>
+		<transition>
+			<source ref="id164"/>
+			<target ref="id161"/>
+			<label kind="synchronisation" x="-755" y="-225">ADT_POS!</label>
+			<nail x="-773" y="-212"/>
+		</transition>
+		<transition>
+			<source ref="id163"/>
+			<target ref="id164"/>
+			<label kind="synchronisation" x="-500" y="-174">TEST_POSITIVE?</label>
+		</transition>
+		<transition>
+			<source ref="id162"/>
+			<target ref="id163"/>
+			<label kind="synchronisation" x="-653" y="-127">START_TEST!</label>
+		</transition>
+		<transition>
+			<source ref="id161"/>
+			<target ref="id162"/>
+			<label kind="synchronisation" x="-806" y="-123">ADT_START?</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+// Tests
+
+Q = Test3(330, 450, 220, 45, 247,717, Q_START, Q_HIGH, Q_MID, Q_LOW, 100);
+QWait = WaitingList(Q_WAIT, Q_START, 4, 14);
+ODI5 = fTest(5, false, ahi, 970, 30, 970, 30, ODI5_START,  ODI5_POS, ODI5_NEG, ODI5_NEG, 500);
+ODI5Wait = WaitingList(ODI5_WAIT, ODI5_START, 14, 28);
+ODI15 = fTest(15, false, ahi, 700, 300, 10, 990, ODI15_START,  ODI15_POS, ODI15_NEG, ODI15_NEG, 500);
+ODI15Wait = WaitingList(ODI15_WAIT, ODI15_START, 14, 28);
+
+nFlow = Test(sleepy, 655, 345, 786, 214,  NFLOW_START,  NFLOW_POS, NFLOW_NEG, NFLOW_NEG, 500);
+nFlowWait = WaitingList(NFLOW_WAIT, NFLOW_START, 14, 28);
+
+
+psgWait = WaitingList(PSG_WAIT, PSG_START, 40, 80);
+psgTest = TestPSG(PSG_START, PSG_POS, PSG_NEG,  900);
+
+pgWait = WaitingList(PG_WAIT, PG_START, 30, 60);
+pgTest = TestPSG(PG_START, PG_POS, PG_NEG,  800);
+
+hsatWait = WaitingList(HSAT_WAIT, HSAT_START, 7, 14);
+hsatTest = TestHSAT(HSAT_START, HSAT_POS, HSAT_NEG, HSAT_FAIL, 600);
+
+// How likely is it that a patient accepts CPAP?
+CPAP_ACC = Test(osa, 1000, 0, 0, 1000,  GIVE_CPAP,  ACCEPT_CPAP, NO_CPAP, NO_CPAP, 350);
+CPAP_WAITS = WaitingList(CPAP_WAIT, GIVE_CPAP, 14, 28);
+
+// List one or more processes to be composed into a system.
+DZ = DGGenInto(1); //TRANS
+DDT = TPhilLow(1); //TRANS
+DDTWAIT = WaitingList(DDT_WAIT, DDT_START, 0,0);
+ADTWAIT = WaitingList(ADT_WAIT, ADT_START, 0,0);
+ADT = ADTSys(PSG_WAIT, PSG_POS, PSG_NEG); //TRANS
+SWait = WaitingList(S_WAIT, S_START, 1, 7);
+AMWait = WaitingList(AM_WAIT, AM_START, 14, 21);
+
+PsGTest = TestChoose(PSG_ODDS, PZG_WAIT, PZG_POS, PZG_NEG, PSG_WAIT, PSG_POS, PSG_NEG, PG_WAIT, PG_POS, PG_NEG);
+tAM = TestAM(400);
+
+PatGen = PatientGenerator(0);
+Treat = TMSimp(0);
+system PatGen, DZ, ODI5, ODI15, Q, nFlow, CPAP_ACC, psgTest, psgWait, nFlowWait, ODI15Wait, ODI5Wait, QWait, CPAP_WAITS, CpapState, Referral, CpapProgress, DDT, hsatTest, hsatWait, DDTWAIT, tAM , AMWait, PsGTest, pgWait, pgTest, TimerState, SWait, ADTWAIT, ADT, Treat;</system>
+	<queries>
+		<query>
+			<formula>Pr[&lt;=50000; 1000] (&lt;&gt; (is_diagnosed_has_osa))</formula>
+			<comment></comment>
+		</query>
+		<query>
+			<formula>Pr[&lt;=50000; 1000] (&lt;&gt; (is_diagnosed_no_osa))</formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

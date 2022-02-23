@@ -1,0 +1,15 @@
+{
+   # First GP-model
+   setTemplate("PROG", "", "SCN4")
+        setTemplate("GP", "GP2()", "GP2")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestHSAT(TEST_START)", "HSAT")
+      setTemplate("SC", "SleepCentre2(TREATMENT_START)", "SleepCentre2")
+        addTemplateChoices("QTEM")
+        addTemplateChoice("QTEM", "QBerlinQ(Q_START)", "BQ")
+        addTemplateChoice("QTEM", "QStopBang(Q_START)", "SB")
+        addTemplateChoice("QTEM", "QcomboODI(Q_START)", "ODI")
+        addTemplateChoice("QTEM", "QcomboNFLOW(Q_START)", "NFLOW")
+        setTemplate("TM", "TreatmentCPAP()", "CPAP")
+
+}

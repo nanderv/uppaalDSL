@@ -1,0 +1,24 @@
+{
+    setTemplate("TM", "Treatment2()", "Treatment2")
+    setTemplate("TESTTEM", "TestHSAT(TEST_START)", "HSAT")
+
+        # Alternatives
+        #setTemplate("SC", "SOMNO_T()", "SleepCentre1")
+        {
+        {   setTemplate("GP", "GP2()", "Filter")
+        }
+        {
+        setTemplate("GP", "GP6()", "Fasttrack")
+        }
+        addTemplateChoices("QTEM")
+        addTemplateChoice("QTEM", "QBerlinQ(Q_START)", "BerlinQ")
+        addTemplateChoice("QTEM", "QStopBang(Q_START)", "StopBang")
+        addTemplateChoice("QTEM", "QPhilHigh(Q_START)", "PhilHigh")
+        addTemplateChoice("QTEM", "QPhilLow(Q_START)", "PhilLow")
+}
+
+    {
+        # Phillips model
+        setTemplate("GP", "GP4()", "Phillips")
+    }
+}

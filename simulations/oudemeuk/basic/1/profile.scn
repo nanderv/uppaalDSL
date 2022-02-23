@@ -1,0 +1,9 @@
+{
+   # First GP-model
+    setGlobalValue("INCIDENCE", 700)
+        setTemplate("PROG", "", "SCN1")
+        setTemplate("GP", "GP1()", "GP1")
+        setTemplate("SC", "SleepCentre1(TREATMENT_START)", "SOMNO")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+}

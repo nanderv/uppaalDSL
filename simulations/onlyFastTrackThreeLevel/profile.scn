@@ -1,0 +1,7 @@
+{
+ setLocalValue("SleepCentre", "int PSGodds",300)
+    setLocalValue("Patient", "const int INCIDENCE", 570)
+
+   # First GP-model
+    import("rawscn/qFastThreeLevel.scn")
+}

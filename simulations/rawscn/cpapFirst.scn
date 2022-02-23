@@ -1,0 +1,8 @@
+{
+   # First GP-model
+        setTemplate("GP", "GPcpapFirst()", "CpapFirst")
+        setTemplate("SC", "SleepCentre(NOP)", "SOMNO")
+        setTemplate("TM", "TreatmentCPAP()", "CPAP")
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestPSG(TEST_START)", "PSG")
+}

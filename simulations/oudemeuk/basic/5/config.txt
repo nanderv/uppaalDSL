@@ -1,0 +1,10 @@
+internal: DGTrad
+# external: adt/complex.mod: CX
+into: DGGenInto
+model:light_model.xml
+output:output-5.xml
+query:main.q
+processor:proc.py
+groupResults: GP
+groupResults: adt
+groupResults: ddt

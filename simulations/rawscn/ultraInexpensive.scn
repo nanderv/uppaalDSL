@@ -1,0 +1,7 @@
+{
+            setTemplate("GP", "GPultraInexpensive()", "ultraInexpensive")
+        setTemplate("SC", "SleepCentre(TREATMENT_START)", "SOMNO")
+
+        addTemplateChoices("TESTTEM")
+        addTemplateChoice("TESTTEM", "TestODI(TEST_START)", "ODI")
+}

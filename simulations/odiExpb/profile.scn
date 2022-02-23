@@ -1,0 +1,8 @@
+{
+    setLocalValue("Patient", "const int INCIDENCE", 570)
+
+   setLocalIntSweep("TestODI", "int TP",500,1000,10)
+   addTemplateChoices("QTEM")
+   addTemplateChoice("QTEM", "QStopBang(Q_START)", "SB")
+   merge("selectedScenarios.scn")
+}
